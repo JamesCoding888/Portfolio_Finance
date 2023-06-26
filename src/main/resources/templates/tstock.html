@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+	<head>
+		<meta charset="UTF-8">
+		<title>TStock 股票、指數、匯率</title>
+		<th:block th:include="./include/header :: header"></th:block>
+		<script>
+			$(document).ready(function(){
+ 				// 新增
+				$("#add").on("click", function(){
+					var jsonObj = $('#myform').serializeObject(); // 將 myform 的物件序列化		
+					var jsonStr = JSON.stringify(jsonObj); //  將 jsonObj 轉 string，以 JSON 格式傳送到後端
+					console.log(jsonStr);
+					// Ajax 程式
+					$.ajax({
+						url: "/portfolio/tstock/",
+						type: "POST",
+				  		contentType: "application/json;charset=utf-8",
+				  		data: jsonStr, //Stringified Json Object
+                        cache: false, //This will force requested pages not to be cached by the browser  
+						processData: false, // 不要將資料放在網址上
+						success: function(resp){  // 執行程式成功，取得一個 response 的 object，並放入 function method 的 resp argument
+							console.log(JSON.stringify(resp)); // 回應物件的內容
+							initPageSetup(); // intiPageSetup() function is called inside the success callback function  
+						}
+					});					
+				});			
+				
+				
+				// 修改				
+                $("#upt").on("click", function () {
+                    var jsonObj = $('#myform').serializeObject();
+                    var jsonStr = JSON.stringify(jsonObj);
+                    $.ajax({
+                        url: "/portfolio/tstock/",
+                        type: "PUT",
+                        contentType: "application/json; charset=utf-8",
+                        data: jsonStr, //Stringified Json Object
+                        cache: false, //This will force requested pages not to be cached by the browser  
+                        processData: false, //To avoid making query String instead of JSON
+                        success: function (resposeJsonObject) {
+                            //alert(JSON.stringify(resposeJsonObject));
+                        	initPageSetup();
+                        }
+                    });
+                });
+				
+				
+				// 刪除
+				$("#del").on("click", function(){
+					var id = $('#myform').find("#id").val();
+					// Ajax 程式
+					$.ajax({
+						url: "/portfolio/tstock/" + id ,
+						type: "DELETE",	
+						cache: false, //This will force requested pages not to be cached by the browser  
+                        processData: false, //To avoid making query String instead of JSON
+                        success: function(resp){  
+							console.log(JSON.stringify(resp));	
+							//alert(resposeJsonObject);
+							initPageSetup();
+						}
+					});					
+				});
+                
+			
+				
+				$("#myTable").on("click", "tr", function() {
+					var id = $(this).find('td').eq(0).text().trim();
+					console.log(id);
+					var url = "/portfolio/tstock/" + id;
+					$.get(url, function(data, status){
+						console.log(JSON.stringify(data));
+					 	$("#add").attr('disabled', true);  // 點選 tr elements 新增按鈕失效
+						$("#upt").attr('disabled', false);
+						$("#del").attr('disabled', false);  
+						$('#myform').trigger('reset'); // 表單內容清空 (reset)
+						$("#myform").find("#id").val(data.id);
+						$("#myform").find("#name").val(data.name);
+						$("#myform").find("#symbol").val(data.symbol);
+						$("#myform").find("#classify_id").val(data.classify.id);
+					});										
+				});
+				
+				
+				$("#rst").on("click", function() {
+					initPageSetup();		
+				}); 
+
+				
+				
+				classify_list();
+				
+				initPageSetup();  // 查詢資料庫資料，並顯示於 tr elements 底下; This code executed firstly while HTML document has been finished loading
+				
+			
+			});
+			
+			// Classify 下拉選單
+			function classify_list(){
+				$.get("/portfolio/classify/", function (datas, status){
+					console.log("Datas:" + datas);
+					datas.map(function (data){
+						$("#classify_id").append("<option value=" + data.id + ">" + data.name + "</option>");
+					});
+				});
+			}
+		
+			function initPageSetup(){
+				$("#add").attr('disabled', false); 
+				$("#upt").attr('disabled', true);
+				$("#del").attr('disabled', true); 
+				$('#myform').trigger('reset'); // 表單內容清空 (reset) 
+				table_list();
+			}
+			
+			function table_list(){
+				$.get("/portfolio/tstock/", function(datas, status){
+					console.log(datas);
+					console.log(status);
+					// clean content from tbody
+					$("#myTable tbody > tr").remove();
+					$.each(datas, function(i, item){
+						// DOM tree 結構
+						var html = "<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>";
+						$("#myTable").append(String.format(html, item.id, item.name, item.symbol, item.classify.name));
+					});						
+				});
+			}
+		
+		</script>
+	</head>
+	
+	<body>
+		<!-- Header -->
+		<th:block th:include="./include/navbar :: navbar"/>
+		
+		
+		<!-- Content -->
+		<div class="container">
+			<p />
+			<h1>TStock 股票、指數、匯率</h1>
+			<form id="myform" class="form-horizontal">
+	
+				<div class="form-group">
+					<label class="col-sm-2 control-label">ID</label>
+					<div class="col-sm-10">
+						<input id="id" value="0" name="id" placeholder="ID" readonly
+							class="form-control" />
+					</div>
+				</div>
+				<div class="form-group">
+					<label class="col-sm-2 control-label">商品名稱</label>
+					<div class="col-sm-10">
+						<input type="text" id="name" name="name" placeholder="商品名稱"
+							class="form-control" />
+					</div>
+				</div>
+				<div class="form-group">
+					<label class="col-sm-2 control-label">商品代號</label>
+					<div class="col-sm-10">
+						<input type="text" id="symbol" name="symbol" placeholder="商品代號"
+							class="form-control" />
+					</div>
+				</div>
+				<div class="form-group">
+					<label class="col-sm-2 control-label">商品分類</label>
+					<div class="col-sm-10">
+						<select id="classify_id" name="classify_id" class="form-control"></select>
+					</div>
+				</div>
+				<div class="form-group">
+					<div class="col-sm-offset-2 col-sm-10">
+						<button id="add" type="button" class="btn btn-success">新增</button>
+						<button id="upt" type="button" class="btn btn-info">修改</button>
+						<button id="del" type="button" class="btn btn-danger">刪除</button>
+						<button id="rst" type="button" class="btn btn-warning">重置</button>
+					</div>
+				</div>
+				
+			</form>
+			<p />
+			<h1>TStock 股票、指數、匯率列表</h1>
+			<table id="myTable" border="1"
+				class="table table-striped table-responsive-md">
+				<thead>
+					<tr>
+						<th>id</th>
+	                    <th>name</th>
+	                    <th>symbol</th>
+	                    <th>classify name</th>
+					</tr>
+				</thead>
+	
+				<tbody>
+	
+				</tbody>
+			</table>
+		</div>
+			
+			
+
+
+		<!-- Footer -->
+		<th:block th:include="./include/footer :: footer"><th:block>
+	
+	
+	</body>
+
+</html>
